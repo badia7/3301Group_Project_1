@@ -1,0 +1,270 @@
+---
+title: "Project 1"
+author: "Nicholas badia.7"
+date: "10/19/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(alr4)
+library(tidyverse)
+library(readr)
+library(broom)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+Case Study #1
+
+1. Nick
+
+E($Y_{i}$ |X = $x_{i}$) = 20 + 4$x_i$ + $e_{i}$
+
+2. Nick
+```{r, cache=TRUE}
+set.seed(12345)
+
+X = c(4, 8, 12, 16, 20)
+Y = c()
+
+for(i in 1:length(X)){
+  Y[i] = 20+4*X[i] + rnorm(1, 0, 5)
+}
+
+RS.lm = lm(Y~X)
+
+Beta_0 = RS.lm[["coefficients"]][["(Intercept)"]]
+Beta_1 = RS.lm[["coefficients"]][["X"]]
+
+fit = predict(RS.lm, newdata = data.frame(X = c(10)), int = "confidence", level = .95, se.fit = TRUE)
+se = fit[["se.fit"]]
+t = qt(.975, 3)
+
+E_10upper = 60 + (se*t)
+E_10lower = 60 - (se*t)
+
+print(E_10upper)
+print(E_10lower)
+```
+
+3. Nick
+```{r, cache=TRUE, warning=FALSE}
+newBeta_1 = c()
+newBeta_0 = c()
+newse = c()
+fit = c()
+newY = c()
+
+
+for(j in 1:1000){
+for(i in 1:length(X)){
+  newY[i] = 20+4*X[i] + rnorm(1, 0, 5)
+}
+  newRS.lm = lm(newY~X)
+  newBeta_0[j] = newRS.lm[["coefficients"]][["(Intercept)"]]
+  newBeta_1[j] = newRS.lm[["coefficients"]][["X"]]
+  
+  newfit= predict(newRS.lm, newdata = data.frame(X = c(10)), int = "confidence", level = .95, se.fit = TRUE)
+newse[j] = newfit[["se.fit"]]
+fit[j] = newfit[["fit"]]
+}
+
+```
+
+4. Nick
+```{r, cache=TRUE}
+mean(newBeta_0)
+sd(newBeta_0)
+mean(newBeta_1)
+sd(newBeta_1)
+
+
+hist(newBeta_0)
+hist(newBeta_1)
+  
+"Yes, they are consistent."
+```
+
+5.Nick
+```{r, cache=TRUE}
+up = c()
+low = c()
+Y_10 = c()
+coverage = c()
+
+for(j in 1:1000){
+  up[j] = fit[j] + (newse[j]*t)
+  low[j] = fit[j] - (newse[j]*t)
+}
+
+for(i in 1:1000){
+  coverage[i] = low[i]<60 & up[i]>60
+}
+
+mean(coverage)
+
+"Yes, it's consistent."
+```
+
+2. Abby & Nick
+```{r, cache=TRUE}
+WineRatings = read.csv("/Users/nickbadia/Downloads/WineRatings.csv")
+
+c = filter(WineRatings, Rating == "Classic")
+o = filter(WineRatings, Rating == "Outstanding")
+vg = filter(WineRatings, Rating == "Very Good")
+g = filter(WineRatings, Rating == "Good")
+m = filter(WineRatings, Rating == "Mediocre")
+nr = filter(WineRatings, Rating == "Not Recommended")
+
+Ratings = c("Classic", "Outstanding", "Very Good", "Good", "Mediocre", "Not Recommended")
+
+
+AveragePrice =c(mean(c$Price), mean(o$Price), mean(vg$Price), mean(g$Price), mean(m$Price), mean(nr$Price))
+NumberOfRatings = c(count(c), count(o), count(vg), count(g), count(m), count(nr))
+
+cbind(Ratings, AveragePrice, NumberOfRatings)
+```
+a.)
+Yes, there does appear to be a relationship between the price of the wine and the Wine Spectator rating because as price increases, the Wine Spectator rating increases as well. For example the average price for “Classic” is 269.57 dollars, while the average price for “Good” is 14.67 dollars."
+
+```
+
+```{r}
+plot(WineRatings$Price, WineRatings$Score, xlab = "Price",
+     ylab = "Wine Spectator Score", main = "Price vs. Wine Spectator score")
+```
+
+```{r}
+cor(y=WineRatings$Score, x=WineRatings$Price) #0.6681859
+```
+a.)
+Based on the scatter plot, the relationship between price and score do NOT appear to be linear. Instead, the data appears to be taking on more of an exponential curve.
+b.)
+The correlation between price and rating is 0.6681859. Therefore, price and rating have a somewhat strong, linear positive relationship.
+c.)
+The coefficient of determination measures the relationship between X and Y, where 0 indicates no linear relationship and 1 indicates a perfect linear relationship. This student is claiming that a R2 value of 0.02 indicates no relationship, but in actuality is just indicates that there is likely no linear relationship. Meaning, there could very well still be a relationship between X and Y, it just may not be linear. Additionally, the coefficient of determination represents the proportion of variability in Y explained by the regression on X. So, we can also interpret this value as 0.02% of the total variability in wine scores can be explained by the prices of the wine. Some appropriate and well fitting linear models have small coefficients of determination (like our model), but large amounts of unexplained variability don’t necessarily render models unuseful. Thus, small values of R2 don’t mean a model is “bad”.
+
+3. 
+```{r}
+wrmod = lm(Score ~ Price, data = WineRatings)
+
+library(broom)
+(eplot = augment(wrmod) %>% ggplot(aes(x = .fitted, y = .resid)) + 
+    geom_point(size = 2) + geom_hline(yintercept = 0) + theme_bw(22) +
+    xlab("fitted values") + ylab("residuals"))
+
+eplot + geom_smooth(se = FALSE)
+
+hist(resid(wrmod), xlab="residuals", main="")
+
+(eplot = augment(wrmod) %>% ggplot(aes(x = .fitted, y = .std.resid)) + 
+    geom_point(size = 2) + geom_hline(yintercept = 0) + theme_bw(22) +
+    xlab("fitted values") + ylab("standard residuals"))
+```
+
+After fitting the SLR model, the next steps before inferences would be to assess whether the model is appropriate by confirming that 1) the mean appears to increase linearly 2) the variability is roughly constant and 3) the error terms are all independent given the predictors and 4)the residuals are approximately normally distributed. Based on the plot in Question 2, the mean appears to be increasing exponentially and not linearly. Furthermore, as evident by the residual plot and the histogram, the residuals do not appear to be centered around 0. The standard residuals plot displays that variability of score appears to increase as price increases as well, so the variance is not constant. Thus, we can conclude that at the moment, the SLR model is NOT a good fit for this data. 
+
+4. Emma
+ In order to determine if the errors of the regression model are independently distributed based on the nature of the data collection, the distribution of errors from the regression model should follow a normal distribution. You can plot the residual values into a histogram and check the distribution. As can be seen from the scatterplot of residuals versus fitted values, the correlation does not appear to be zero, and thus, these values are likely not independent. 
+
+
+5. Abby & Nick
+a.)
+```{r}
+logplot <- WineRatings %>%
+  ggplot(aes(x = log10(Price), y = Score)) + geom_point(size = 2) +
+theme_bw(10) + xlab("log10(Price)") + ylab("Wine Spectator Score") + ggtitle("Price vs. Wine Spectator Score")
+
+```
+
+b.)
+```{r}
+summary(lm(Score ~log10(Price), data = WineRatings))
+
+b0hat <- 78.3967
+b1hat <-  6.9561
+
+```
+
+$\hat{E}(Score \mid Price) = 78.3967 +  6.9561log_{10}(Price)$
+
+
+c.)
+```{r}
+
+WineRatings %>%
+  ggplot(aes(x = log10(Price), y = Score)) + geom_point(size = 2) +
+geom_abline(intercept = b0hat, slope = b1hat) +
+theme_bw(10) + xlab("log10(Price)") + ylab("Wine Spectator Score") + ggtitle("log10(Price) vs. Wine Spectator Score")
+
+```
+
+d.) Yes, this estimated regression line does appear to be a good fit for the transformed data. There are very few data points that stray from the line.
+
+6. Jake
+
+a.)  
+```{r}
+(eplot = augment(wrmod) %>% ggplot(aes(x = .fitted, y = .resid)) + 
+    geom_point(size = 2) + geom_hline(yintercept = 0) + theme_bw(22) +
+    xlab("fitted values") + ylab("residuals"))
+
+eplot + geom_smooth(se = FALSE)
+```
+The mean function is NOT appropriate since the plot of residuals ($\hat{e}_i$) vs. $X$ has an obvious trend where the residuals increase and then decrease as X increases. Thus, the mean is not linear.
+
+b.)
+```{r}
+#b
+(eplot = augment(wrmod) %>% ggplot(aes(x = .fitted, y = .std.resid)) + 
+    geom_point(size = 2) + geom_hline(yintercept = 0) + theme_bw(22) +
+    xlab("fitted values") + ylab("standard residuals"))
+```
+The variance is NOT constant since the plot of standardized variance ($r_i$) vs. $X$ is not even above and below the line of $r_i = 0$.
+
+c.) 
+```{r}
+hist(resid(wrmod), xlab="residuals", main="")
+```
+Errors in the linear model appear to be normally distributed since they are centered around 0 and not significantly skewed in one direction.
+
+
+7.Abby
+
+Yes, based upon my analysis from question (5), I would say that spending more for a bottle of wine will provide a better wine. If we look at the graphs, they clearly show a positive linear trend, where as price increases, so does the spectator score. Additionally, from a summary chart of the linear regression model, the probability value is observed to be extremely low (<2e-16), therefore indicating that there is a relationship between price and rating.
+
+wine.lm = lm(WineRatings$Score~WineRatings$Price)
+summary(wine.lm)
+
+
+8. Emma
+a.)
+```{r}
+plot(WineRatings$Price, WineRatings$Score, xlab = "Price",
+     ylab = "Wine Spectator Score", main = "Price vs. Wine Spectator score")
+```
+
+b.)
+```{r}
+logplot +  geom_smooth(se=FALSE)
+```
+
+c.)
+```{r}
+logplot +  geom_smooth(se=FALSE)
+confint(lm(Score ~ log10(Price), data = WineRatings))
+```
+There is 95% confidence that the wine spectator score is between 76.6 and 80.2.
+
+
+
+
+
+
